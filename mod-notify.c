@@ -26,7 +26,7 @@ static struct notifier_block module_nb= {
 	.priority = INT_MIN + 1,
 };
 
-int mod_notify_init(void)
+static int mod_notify_init(void)
 {
 	int ret;
 
@@ -37,7 +37,7 @@ int mod_notify_init(void)
 	return 0;
 }
 
-void mod_notify_exit(void)
+static void mod_notify_exit(void)
 {
 	unregister_module_notifier(&module_nb);
 }
