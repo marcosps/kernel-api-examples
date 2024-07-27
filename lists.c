@@ -13,7 +13,7 @@ struct sentry {
 
 static int lists_init(void)
 {
-	struct sentry *se1, *se2, *cursor, *tmp;
+	struct sentry *se1, *se2, *se3, *cursor, *tmp;
 
 	se1 = kmalloc(sizeof(struct sentry), GFP_KERNEL);
 	if (!se1)
@@ -28,19 +28,44 @@ static int lists_init(void)
 		return -ENOMEM;
 	}
 
+	se2 = kmalloc(sizeof(struct sentry), GFP_KERNEL);
+	if (!se2) {
+		kfree(se1);
+		return -ENOMEM;
+	}
+
 	se2->val = 20;
 	list_add(&se2->list, &mod_list);
 
-	/* Shows the latest entry, with val as 20 */
+	se3 = kmalloc(sizeof(struct sentry), GFP_KERNEL);
+	if (!se2) {
+		kfree(se2);
+		kfree(se1);
+		return -ENOMEM;
+	}
+
+	se3->val = 30;
+	list_add(&se3->list, &mod_list);
+
+	/* Shows the first entry, with val as 30 */
 	cursor = list_first_entry(&mod_list, struct sentry, list);
 	pr_info("First entry: %d\n", cursor->val);
+
+	/* Shows the last entry, with val as 10 */
+	cursor = list_last_entry(&mod_list, struct sentry, list);
+	pr_info("Last entry: %d\n", cursor->val);
+
+	/* Shows the second entry, with val as 20 */
+	cursor = list_prev_entry(cursor, list);
+	pr_info("Previous from last entry: %d\n", cursor->val);
 
 	/*
 	 * Show that the list will be traversed from the last inserted node to
 	 * the first one.
 	 */
+	pr_info("Traversing list\n");
 	list_for_each_entry_safe(cursor, tmp, &mod_list, list) {
-		pr_info("Entry value: %d\n", cursor->val);
+		pr_info("\t%d\n", cursor->val);
 		list_del(&cursor->list);
 		kfree(cursor);
 	}
