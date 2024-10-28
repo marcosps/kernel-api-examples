@@ -10,47 +10,65 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/console.h>
+#include <linux/list.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
-
-#define MAX_RECORDS 100
+#include <linux/slab.h>
 
 struct scon_msg {
+	struct list_head list;
 	size_t len;
-	char msg[MAX_RECORDS];
+	char msg[] __counted_by(len);
 };
 
-static struct scon_msg msgs[MAX_RECORDS];
-static size_t nrecs;
+static LIST_HEAD(msgs);
 
 static ssize_t scon_read(struct file *f, char __user *buf, size_t count,
 		loff_t *fpos)
 {
-	/* Each fpos means a record here */
-	if (*fpos >= MAX_RECORDS || *fpos >= nrecs)
+	struct scon_msg *smsg;
+
+	if (list_empty(&msgs))
 		return 0;
 
-	/* only read the first message */
-	if (count > msgs[0].len)
-		count = msgs[0].len;
+	smsg = list_first_entry(&msgs, struct scon_msg, list);
 
-	if (copy_to_user(buf, msgs[*fpos].msg, count))
+	/* only read the first message */
+	if (count > smsg->len)
+		count = smsg->len;
+
+	if (copy_to_user(buf, smsg->msg, count))
 		return -ERESTARTSYS;
 
-	(*fpos)++;
+	/* Only remove the record if it was copied to userspace correctly */
+	list_del(&smsg->list);
 
 	return count;
 }
 
 static void write_msg(struct console *con, const char *msg, unsigned int len)
 {
-	/* For now store only MAX_RECORDS console entries */
-	if (nrecs >= MAX_RECORDS)
-		return;
+	/*
+	 * We need to allocate memory enough for the message, and use
+	 * GFP_ATOMIC since we can't sleep when begin called by the console
+	 * write callpath.
+	 */
+	struct scon_msg *smsg = kzalloc(sizeof(struct scon_msg) + sizeof(char) + len + 1,
+			GFP_ATOMIC);
 
-	msgs[nrecs].len = len;
-	strscpy(msgs[nrecs].msg, msg, sizeof(msgs[nrecs].msg));
-	nrecs++;
+	if (!smsg) {
+		pr_err("failed to allocate message!\n");
+		return;
+	}
+
+	smsg->len = len + 1;
+	strscpy(smsg->msg, msg, len);
+	/*
+	 * FIXME: To make cat command to print messages in different lines... maybe
+	 * unnecessary?
+	 */
+	smsg->msg[len - 1] = '\n';
+	list_add_tail(&smsg->list, &msgs);
 }
 
 static struct file_operations scon_fops = {
@@ -66,7 +84,8 @@ static struct miscdevice scon_misc = {
 
 static struct console scon = {
 	.name = "simple_console",
-	.flags = CON_ENABLED,
+	/* Print all messages since boot */
+	.flags = CON_ENABLED | CON_PRINTBUFFER,
 	.write = write_msg,
 };
 
