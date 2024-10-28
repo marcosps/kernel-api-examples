@@ -1,4 +1,12 @@
-/* Simple console implementation for experimenting legacy and NBCON variants */
+/*
+ * Simple console implementation for experimenting legacy and NBCON variants
+ * (TODO).
+ *
+ * For testing, load the sconsole module, and read from file /dev/sconsole after
+ * generating information o /dev/kmsg (dmesg). Take a look into your current
+ * loglevel otherwise you might end up not recording the information.
+ */
+
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/console.h>
