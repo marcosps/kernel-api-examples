@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
+ * Author: Marcos Paulo de Souza <marcos@mpdesouza.com>
+ *
  * Simple console implementation for experimenting legacy and NBCON variants
  * (TODO).
  *
@@ -21,6 +24,7 @@ struct scon_msg {
 	char msg[] __counted_by(len);
 };
 
+/* List of all collected messages from printk */
 static LIST_HEAD(msgs);
 
 static ssize_t scon_read(struct file *f, char __user *buf, size_t count,
@@ -31,6 +35,7 @@ static ssize_t scon_read(struct file *f, char __user *buf, size_t count,
 	if (list_empty(&msgs))
 		return 0;
 
+	/* Get the first scon_msg from the list */
 	smsg = list_first_entry(&msgs, struct scon_msg, list);
 
 	/* only read the first message */
@@ -42,6 +47,7 @@ static ssize_t scon_read(struct file *f, char __user *buf, size_t count,
 
 	/* Only remove the record if it was copied to userspace correctly */
 	list_del(&smsg->list);
+	kfree(smsg);
 
 	return count;
 }
@@ -68,6 +74,7 @@ static void write_msg(struct console *con, const char *msg, unsigned int len)
 	 * unnecessary?
 	 */
 	smsg->msg[len - 1] = '\n';
+	/* Always add new messages to the end of the messages list */
 	list_add_tail(&smsg->list, &msgs);
 }
 
@@ -109,8 +116,21 @@ static int sconsole_init(void)
 
 static void sconsole_exit(void)
 {
+	struct scon_msg *cur, *tmp;
+
+	/* Stop receiving new messages */
 	unregister_console(&scon);
+	/*
+	 * Stop receiving new userspace requests to read and delete entries from
+	 * msgs list.
+	 */
 	misc_deregister(&scon_misc);
+
+	/* Remove all memory allocated to the entries not read */
+	list_for_each_entry_safe(cur, tmp, &msgs, list) {
+		list_del(&cur->list);
+		kfree(cur);
+	}
 }
 
 module_init(sconsole_init);
