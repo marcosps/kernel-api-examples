@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Author: Marcos Paulo de Souza <marcos@mpdesouza.com>
 /*
  * Example of correct usage of module_get/put is order to avoid a crash when
  * executing a delayed work.

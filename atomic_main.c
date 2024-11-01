@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Author: Marcos Paulo de Souza <marcos@mpdesouza.com>
 #include <linux/module.h>
 #include <linux/kernel.h>
 
