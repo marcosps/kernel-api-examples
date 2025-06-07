@@ -7,6 +7,9 @@ static struct task_struct *ktask;
 static int print_messages(void *data)
 {
 	while (1) {
+		if (kthread_should_stop())
+			return 0;
+
 		pr_info("Printing something, and sleeping for 1 second...\n");
 		ssleep(1);
 	}
@@ -27,6 +30,7 @@ static int kthread_mod_init(void)
 
 static void kthread_mod_exit(void)
 {
+	pr_info("Stopping the print-messages kthread...\n");
 	kthread_stop(ktask);
 }
 
