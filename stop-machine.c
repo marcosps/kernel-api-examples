@@ -4,7 +4,7 @@
 #include <linux/module.h>
 #include <linux/stop_machine.h>
 
-static int run_stop_machine(void *)
+static int run_stop_machine(void *data)
 {
 	pr_info("Running on cpu %d while the others are stopped\n",
 			smp_processor_id());
